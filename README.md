@@ -1,10 +1,11 @@
 # modulated-deform-conv
 该项目是一个 Pytorch C++ and CUDA Extension,采用C++和Cuda实现了deformable-conv2d,modulated-deformable-conv2d,deformable-conv3d,modulated-deformable-conv3d的forward function和backward function,并在Python中对其进行了包装。
 <br />This Project is a Pytorch C++ and CUDA Extension, which implements  the forward function and backward function for deformable-conv2d, modulated-deformable-conv2d, deformable-conv3d, modulated-deformable-conv3d, then encapsulates C++ and CUDA  code into Python Package.
-##安装 Install
+
+### 安装 Install
 `pip install modulated-deform-conv`
 
-####要求 Requires
+#### 要求 Requires
 * Python 3
 * Pytorch>=1.3
 * Linux, gcc版本>=4.9(For Linux, gcc version>=4.9)
@@ -15,7 +16,7 @@
 - Ubuntu18.04 , gcc 7.4 , CUDA 10.2 ,Python3.7.4, Pytorch 1.4.0
 - Windows10 , Visual Studio 2017 , CUDA 10.1 ,Python3.7.6, Pytorch 1.4.0
 
-####速度优化  Speed Optimization
+#### 速度优化  Speed Optimization
 * `pip download modulated-deform-conv`
 解压得到的压缩文件，进入`modulated-deform-conv`，打开`src/config.h`，用户可根据自身显卡情况，设置以下两个变量，获得更快运行速度，然后运行 `python setup.py install`
 <br>Unzip the downloaded compressed file, `cd modulated-deform-conv`, then open `src/config.h`,users are recommended to set the following `VARIABLES` to optimize run speed according to their NVIDIA GPU condition, then run `python setup.py install`
@@ -25,7 +26,7 @@
 * 运行时可以通过传递`in_step`参数来优化速度，该变量控制每次并行处理的batch 大小。
 <br> Or users can set different `in_step`  value in run time, which controls the batch size of each parallel processing .
 
-##使用 Use
+### 使用 Use
 直接使用C++函数，请`import MDCONV_CUDA`
 使用封装后的python类，请`import modulated_deform_conv`
 Using C++ functions directly, please  `import MDCONV_CUDA`
