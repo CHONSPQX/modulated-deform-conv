@@ -3,7 +3,9 @@
 <br />This Project is a Pytorch C++ and CUDA Extension, which implements  the forward function and backward function for deformable-conv2d, modulated-deformable-conv2d, deformable-conv3d, modulated-deformable-conv3d, then encapsulates C++ and CUDA  code into Python Package.
 
 ### 安装 Install
-`pip install modulated-deform-conv`
+* run `pip install modulated-deform-conv`
+* or `git clone https://github.com/CHONSPQX/modulated-deform-conv.git`,then `cd modulated-deform-conv` and run `python setup.py install`
+
 
 #### 要求 Requires
 * Python 3
