@@ -25,7 +25,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='modulated_deform_conv',
-    version='1.0.1',
+    version='1.0.2',
     author='qiaoxin',
     author_email='qiaoxin182@gmail.com',
     url='https://www.github.com',
