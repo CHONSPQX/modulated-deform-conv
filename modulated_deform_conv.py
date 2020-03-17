@@ -130,7 +130,7 @@ class ModulatedDeformConv2dFunction(Function):
     @staticmethod
     @once_differentiable
     def backward(ctx, grad_output):
-        print(grad_output)
+        grad_output=grad_output.contiguous()
         if not grad_output.is_cuda:
             raise NotImplementedError
         input, offset, mask, weight, bias = ctx.saved_tensors
@@ -214,7 +214,8 @@ class DeformConv3dFunction(Function):
     @staticmethod
     @once_differentiable
     def backward(ctx, grad_output):
-        print(grad_output)
+        grad_output=grad_output.contiguous()
+        # print(grad_output)
         if not grad_output.is_cuda:
             raise NotImplementedError
         input, offset, weight, bias = ctx.saved_tensors
@@ -263,9 +264,9 @@ class ModulatedDeformConv3dFunction(Function):
     @staticmethod
     def forward(ctx, input, offset, mask, weight, bias=None, stride=1, padding=0, dilation=1,
                 groups=1, deformable_groups=1 , in_step=64):
-        ctx.stride = _pair(stride)
-        ctx.padding = _pair(padding)
-        ctx.dilation = _pair(dilation)
+        ctx.stride = _triple(stride)
+        ctx.padding = _triple(padding)
+        ctx.dilation = _triple(dilation)
         ctx.groups = groups
         ctx.deformable_groups = deformable_groups
         ctx.in_step = in_step
@@ -300,7 +301,8 @@ class ModulatedDeformConv3dFunction(Function):
     @staticmethod
     @once_differentiable
     def backward(ctx, grad_output):
-        print(grad_output)
+        grad_output = grad_output.contiguous()
+        # print(grad_output)
         if not grad_output.is_cuda:
             raise NotImplementedError
         input, offset, mask, weight, bias = ctx.saved_tensors
@@ -504,10 +506,10 @@ class ModulatedDeformConv3d(nn.Module):
 
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.kernel_size = _pair(kernel_size)
-        self.stride = _pair(stride)
-        self.padding = _pair(padding)
-        self.dilation = _pair(dilation)
+        self.kernel_size = _triple(kernel_size)
+        self.stride = _triple(stride)
+        self.padding = _triple(padding)
+        self.dilation = _triple(dilation)
         self.groups = groups
         self.deformable_groups = deformable_groups
         self.in_step=in_step
