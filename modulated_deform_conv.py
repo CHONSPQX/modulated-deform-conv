@@ -807,7 +807,7 @@ class DeformConv3dPack(DeformConv3d):
     def forward(self, x):
         offset = self.conv_offset(x)
         return deform_conv3d(x, offset, self.weight, self.bias, self.stride, self.padding, self.dilation,
-                             self.groups, self.deformable_group, self.in_step)
+                             self.groups, self.deformable_groups, self.in_step)
 
 class ModulatedDeformConv3dPack(ModulatedDeformConv3d):
     def __init__(self, *args, **kwargs):
