@@ -16,6 +16,7 @@
 由于资源有限，目前测试过的环境有(Because of limited resources, only the following environment are tested)
 - Ubuntu18.04 , gcc 7.4 , CUDA 10.2 ,Python3.7.4, Pytorch 1.3.1
 - Ubuntu18.04 , gcc 7.4 , CUDA 10.2 ,Python3.7.4, Pytorch 1.4.0
+- Ubuntu18.04 , gcc 7.5 , CUDA 11.1 ,Python3.6.12, Pytorch 1.7.0
 - Windows10 , Visual Studio 2017 , CUDA 10.1 ,Python3.7.6, Pytorch 1.4.0
 - Windows10 , Visual Studio 2019 , CUDA 11.1 ,Python3.6.12, Pytorch 1.7.0
 
