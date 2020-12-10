@@ -51,6 +51,9 @@ inline int GET_STEP(const int batch,const int step)
 
 #define GETTYPE(instr) #instr
 
+#ifndef AT_CHECK
+#define AT_CHECK TORCH_CHECK 
+#endif
 
 template <typename T>
 std::string TO_STRING(T msg)
