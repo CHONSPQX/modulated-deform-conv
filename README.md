@@ -17,6 +17,7 @@
 - Ubuntu18.04 , gcc 7.4 , CUDA 10.2 ,Python3.7.4, Pytorch 1.3.1
 - Ubuntu18.04 , gcc 7.4 , CUDA 10.2 ,Python3.7.4, Pytorch 1.4.0
 - Windows10 , Visual Studio 2017 , CUDA 10.1 ,Python3.7.6, Pytorch 1.4.0
+- Windows10 , Visual Studio 2019 , CUDA 11.1 ,Python3.6.12, Pytorch 1.7.0
 
 #### 速度优化  Speed Optimization
 * `pip download modulated-deform-conv`
