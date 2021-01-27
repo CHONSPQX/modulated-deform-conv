@@ -535,7 +535,7 @@ class ModulatedDeformConv3d(nn.Module):
 
     def forward(self, x, offset,mask):
         return modulated_deform_conv3d(x, offset, mask, self.weight, self.bias, self.stride, self.padding, self.dilation,
-                           self.groups, self.deformable_group,self.in_step)
+                           self.groups, self.deformable_groups,self.in_step)
 
     # def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,
     #              groups=1, deformable_groups=1, bias=False, in_step=64):
