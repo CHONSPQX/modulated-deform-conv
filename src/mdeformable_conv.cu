@@ -156,7 +156,7 @@ int modulated_deform_conv2d_forward_cuda(
 
   // resize output
   const int step=GET_STEP(batch,in_step);
-  output = output.view({batch/step, step, channels_out, height_out, width_out});
+  output = output.view({batch, channels_out, height_out, width_out});
   output.zero_();
   // resize temporary columns
   at::Tensor columns =at::zeros({channels * kernel_h * kernel_w,
@@ -171,8 +171,8 @@ int modulated_deform_conv2d_forward_cuda(
   print_tensor_size("modulated_deform_conv2d_forward_cuda---mask size",mask);
 #endif
   // divide into group
-  output = output.view({output.size(0), group, output.size(1) / group,
-                        output.size(2), output.size(3),output.size(4)});
+  output = output.view({batch/step, group, output.size(1) / group,step,
+                        output.size(2), output.size(3)});
   weight = weight.view({group, weight.size(0) / group, weight.size(1),
                         weight.size(2), weight.size(3)});
 #ifdef DEBUG

@@ -206,7 +206,7 @@ int deform_conv3d_forward_cuda(
   print_tensor_size("deform_conv3d_forward_cuda---offset size",offset);
 #endif
 
-  output = output.view({batch / step, step, channels_out,height_out, width_out,length_out});
+  output = output.view({batch, channels_out,height_out, width_out,length_out});
   output.zero_();
 
   at::Tensor columns = at::zeros({channels * kernel_h * kernel_w * kernel_l,
@@ -216,8 +216,8 @@ int deform_conv3d_forward_cuda(
   offset =offset.view({batch / step, step,deformable_group*3* kernel_h * kernel_w * kernel_l,
 	  	  	  	  	  height_out, width_out,length_out});
   //divide into group
-  output = output.view({output.size(0), group, output.size(1) / group,
-                        output.size(2), output.size(3),output.size(4),output.size(5)});
+  output = output.view({batch/step, group, output.size(1) / group,step,
+                        output.size(2), output.size(3),output.size(4)});
   weight = weight.view({group, weight.size(0) / group, weight.size(1),
 	  weight.size(2), weight.size(3),weight.size(4)});
 
