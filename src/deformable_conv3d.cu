@@ -165,7 +165,7 @@ int deform_conv3d_forward_cuda(
         const int pad_h,const int pad_w,const int pad_l,
         const int dilation_h,const int dilation_w,const int dilation_l,
         const int group,const int deformable_group, const int in_step,const bool with_bias){
-#define DEBUG
+//#define DEBUG
   TORCH_CHECK(input.is_contiguous(), "input tensor has to be contiguous");
   TORCH_CHECK(weight.is_contiguous(), "weight tensor has to be contiguous");
   TORCH_CHECK(bias.is_contiguous(), "bias tensor has to be contiguous");
