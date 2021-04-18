@@ -16,7 +16,16 @@ using namespace at;
 #define CUDA_KERNEL_LOOP(i, n)                                 \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
-
+      
+#define TRY_ALLOCATE(left , right)  \
+    try  {                     \
+        left = right ;              \
+    }catch(std::exception e){  \
+        std::cout<<#left<<" TRY_ALLOCATE failed"<<std::endl;          \
+        throw e;               \
+    }                          
+    
+      
 const int CUDA_NUM_THREADS = 256;
 const int MAX_GRID_NUM = 65535;
 

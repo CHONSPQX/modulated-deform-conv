@@ -209,7 +209,7 @@ int modulated_deform_conv3d_forward_cuda(
       (length + 2 * pad_l - (dilation_l * (kernel_l - 1) + 1)) / stride_l + 1;
   const int step=GET_STEP(batch,in_step);
 
-  output = output.view({batch / step, step, channels_out,height_out, width_out,length_out});
+  output = output.view({batch,channels_out,height_out, width_out,length_out});
   output.zero_();
 
   at::Tensor columns = at::zeros({channels * kernel_h * kernel_w * kernel_l,
@@ -221,8 +221,7 @@ int modulated_deform_conv3d_forward_cuda(
   mask =mask.view({batch / step, step,deformable_group* kernel_h * kernel_w * kernel_l,
 	  	  	  	  	  height_out, width_out,length_out});
   //divide into group
-  output = output.view({output.size(0), group, output.size(1) / group,
-                        output.size(2), output.size(3),output.size(4),output.size(5)});
+  output = output.view({batch/step,group,output.size(1)/group,step,output.size(2),output.size(3),output.size(4)});
   weight = weight.view({group, weight.size(0) / group, weight.size(1),
 	  weight.size(2), weight.size(3),weight.size(4)});
 
@@ -239,10 +238,11 @@ int modulated_deform_conv3d_forward_cuda(
         dilation_h, dilation_w, dilation_l,
         deformable_group, columns);
 	  columns = columns.view({group, columns.size(0) / group, columns.size(1)});
-	  for (int g = 0; g < group; g++) {
-	      at::Tensor temp=at::mm(weight[g].flatten(1), columns[g]);
-	      output[b][g] += temp.view_as(output[b][g]);
-	  }
+        for (int g = 0; g < group; g++) {
+        output[b][g] = output[b][g].flatten(1)
+                            .addmm_(weight[g].flatten(1), columns[g]).view_as(output[b][g]);
+        
+        }
 	  columns = columns.view({columns.size(0)*columns.size(1), columns.size(2)});
   }
 

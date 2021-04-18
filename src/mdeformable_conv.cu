@@ -156,11 +156,14 @@ int modulated_deform_conv2d_forward_cuda(
 
   // resize output
   const int step=GET_STEP(batch,in_step);
-  output = output.view({batch/step, step, channels_out, height_out, width_out});
+  output = output.view({batch, channels_out, height_out, width_out});
   output.zero_();
   // resize temporary columns
   at::Tensor columns =at::zeros({channels * kernel_h * kernel_w,
-	  	  	  step * height_out * width_out},input.options());
+  	  	  	  step * height_out * width_out},input.options());
+  //at::Tensor columns;
+  //TRY_ALLOCATE(columns,at::zeros({channels * kernel_h * kernel_w,
+//	  	  	  step * height_out * width_out},input.options()));
   input=input.view({batch/step,step,channels,height,width});
   offset=offset.view({batch/step,step,deformable_group * 2 *kernel_h*kernel_w,height_out,width_out});
   mask=mask.view({batch/step,step,deformable_group*kernel_h*kernel_w,height_out,width_out});
@@ -171,8 +174,8 @@ int modulated_deform_conv2d_forward_cuda(
   print_tensor_size("modulated_deform_conv2d_forward_cuda---mask size",mask);
 #endif
   // divide into group
-  output = output.view({output.size(0), group, output.size(1) / group,
-                        output.size(2), output.size(3),output.size(4)});
+  output = output.view({batch/step, group, output.size(1) / group,step,
+                        output.size(2), output.size(3)});
   weight = weight.view({group, weight.size(0) / group, weight.size(1),
                         weight.size(2), weight.size(3)});
 #ifdef DEBUG
@@ -189,8 +192,9 @@ int modulated_deform_conv2d_forward_cuda(
   print_tensor_size("modulated_deform_conv2d_forward_cuda---columns size",columns);
 #endif
     for (int g = 0; g < group; g++) {
-      at::Tensor temp=at::mm(weight[g].flatten(1), columns[g]);
-      output[b][g] += temp.view_as(output[b][g]);
+      output[b][g] = output[b][g].flatten(1)
+                        .addmm_(weight[g].flatten(1), columns[g]).view_as(output[b][g]);
+      
     }
     columns = columns.view({columns.size(0) * columns.size(1), columns.size(2)});
   }
