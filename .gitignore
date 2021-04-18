@@ -1,3 +1,7 @@
 *.egg
 *.so
 *linux*
+build
+__pycache__
+dist
+*.egg-info
