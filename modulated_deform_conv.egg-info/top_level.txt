@@ -1,2 +1,0 @@
-MDCONV_CUDA
-modulated_deform_conv
