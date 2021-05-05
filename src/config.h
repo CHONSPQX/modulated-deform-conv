@@ -12,7 +12,7 @@
 
 using namespace at;
 
-#define EPS 1e-8
+#define EPS 1.192092896e-07F
 #define CUDA_KERNEL_LOOP(i, n)                                 \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
@@ -28,6 +28,9 @@ using namespace at;
       
 const int CUDA_NUM_THREADS = 256;
 const int MAX_GRID_NUM = 65535;
+
+// const int CUDA_NUM_THREADS = 1;
+// const int MAX_GRID_NUM = 1;
 
 inline int GET_BLOCKS(const int N)
 {
