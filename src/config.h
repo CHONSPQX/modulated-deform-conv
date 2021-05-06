@@ -9,8 +9,11 @@
 #include<iostream>
 #include <ATen/ATen.h>
 #include <THC/THCAtomics.cuh>
+#include <torch/extension.h>
+#include <pybind11/pybind11.h>
 
 using namespace at;
+namespace py = pybind11;
 
 #define EPS 1.192092896e-07F
 #define CUDA_KERNEL_LOOP(i, n)                                 \
@@ -89,77 +92,5 @@ void function_info(const std::string& info,int level=0);
 	if(msg){ \
 		__VA_ARGS__;    \
 	}
-
-int deform_conv2d_forward_cuda(
-    at::Tensor input, at::Tensor weight, at::Tensor bias,
-    at::Tensor offset, at::Tensor output,
-    const int kernel_h, const int kernel_w, const int stride_h, const int stride_w,
-    const int pad_h, const int pad_w, const int dilation_h,
-    const int dilation_w, const int group, const int deformable_group,
-    const int in_step,const bool with_bias);
-
-int deform_conv2d_backward_cuda(
-    at::Tensor input, at::Tensor weight, at::Tensor bias,at::Tensor offset,
-    at::Tensor grad_input, at::Tensor grad_weight, at::Tensor grad_bias,
-    at::Tensor grad_offset, at::Tensor grad_output,
-    const int kernel_h,const int kernel_w,const int stride_h,const int stride_w,
-    const int pad_h,const int pad_w,const int dilation_h,const int dilation_w,
-    const int group,const int deformable_group, const int in_step,const bool with_bias);
-
-
-int modulated_deform_conv2d_forward_cuda(
-    at::Tensor input, at::Tensor weight, at::Tensor bias,
-    at::Tensor offset, at::Tensor mask, at::Tensor output,
-    const int kernel_h, const int kernel_w, const int stride_h, const int stride_w,
-    const int pad_h, const int pad_w, const int dilation_h,
-    const int dilation_w, const int group, const int deformable_group,
-    const int in_step,const bool with_bias);
-
-int modulated_deform_conv2d_backward_cuda(
-    at::Tensor input, at::Tensor weight, at::Tensor bias,at::Tensor offset, at::Tensor mask,
-    at::Tensor grad_input, at::Tensor grad_weight, at::Tensor grad_bias,
-    at::Tensor grad_offset, at::Tensor grad_mask, at::Tensor grad_output,
-    const int kernel_h,const int kernel_w,const int stride_h,const int stride_w,
-    const int pad_h,const int pad_w,const int dilation_h,const int dilation_w,
-    const int group,const int deformable_group, const int in_step,const bool with_bias);
-
-int deform_conv3d_forward_cuda(
-		at::Tensor input, at::Tensor weight,at::Tensor bias,
-        at::Tensor offset, at::Tensor output,
-        const int kernel_h,const int kernel_w,const int kernel_l,
-        const int stride_h,const int stride_w,const int stride_l,
-        const int pad_h,const int pad_w,const int pad_l,
-        const int dilation_h,const int dilation_w,const int dilation_l,
-        const int group,const int deformable_group, const int in_step,const bool with_bias);
-
-int deform_conv3d_backward_cuda(
-    at::Tensor input, at::Tensor weight, at::Tensor bias,at::Tensor offset,
-    at::Tensor grad_input, at::Tensor grad_weight, at::Tensor grad_bias,
-    at::Tensor grad_offset, at::Tensor grad_output,
-    const int kernel_h,const int kernel_w,const int kernel_l,
-    const int stride_h,const int stride_w,const int stride_l,
-    const int pad_h,const int pad_w,const int pad_l,
-    const int dilation_h,const int dilation_w,const int dilation_l,
-    const int group, int deformable_group,const int in_step,const bool with_bias) ;
-
-int modulated_deform_conv3d_forward_cuda(
-    at::Tensor input, at::Tensor weight, at::Tensor bias,
-    at::Tensor offset, at::Tensor mask, at::Tensor output,
-    const int kernel_h, const int kernel_w, const int kernel_l,
-    const int stride_h, const int stride_w, const int stride_l,
-    const int pad_h, const int pad_w, const int pad_l,
-    const int dilation_h,const int dilation_w, const int dilation_l,
-    const int group, const int deformable_group,const int in_step,const bool with_bias);
-
-int modulated_deform_conv3d_backward_cuda(
-    at::Tensor input, at::Tensor weight, at::Tensor bias,at::Tensor offset,at::Tensor mask,
-    at::Tensor grad_input, at::Tensor grad_weight, at::Tensor grad_bias,
-    at::Tensor grad_offset, at::Tensor grad_mask, at::Tensor grad_output,
-    const int kernel_h,const int kernel_w,const int kernel_l,
-    const int stride_h,const int stride_w,const int stride_l,
-    const int pad_h,const int pad_w,const int pad_l,
-    const int dilation_h,const int dilation_w,const int dilation_l,
-    const int group,const int deformable_group,const int in_step,const bool with_bias) ;
-
 
 #endif /* CONFIG_H_ */

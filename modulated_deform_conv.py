@@ -107,10 +107,10 @@ class ModulatedDeformConv2dFunction(Function):
             raise NotImplementedError
         if weight.requires_grad or mask.requires_grad or offset.requires_grad  or input.requires_grad:
             ctx.save_for_backward(input, offset, mask, weight, bias)
-        output = input.new_empty(ModulatedDeformConv2dFunction._infer_shape(ctx, input, weight))
+        #output = input.new_empty(ModulatedDeformConv2dFunction._infer_shape(ctx, input, weight))
 
-        MDCONV_CUDA.modulated_deform_conv2d_forward_cuda(
-            input, weight, bias, offset, mask, output,
+        output=MDCONV_CUDA.modulated_deform_conv2d_forward_cuda(
+            input, weight, bias, offset, mask,
             weight.shape[2],weight.shape[3],
             ctx.stride[0], ctx.stride[1],
             ctx.padding[0], ctx.padding[1],
@@ -134,14 +134,13 @@ class ModulatedDeformConv2dFunction(Function):
         if not grad_output.is_cuda:
             raise NotImplementedError
         input, offset, mask, weight, bias = ctx.saved_tensors
-        grad_input = torch.zeros_like(input)
-        grad_offset = torch.zeros_like(offset)
-        grad_mask = torch.zeros_like(mask)
-        grad_weight = torch.zeros_like(weight)
-        grad_bias = torch.zeros_like(bias)
-        MDCONV_CUDA.modulated_deform_conv2d_backward_cuda(
-            input, weight, bias, offset, mask,
-            grad_input, grad_weight,grad_bias,grad_offset, grad_mask, grad_output,
+        #grad_input = torch.zeros_like(input)
+        #grad_offset = torch.zeros_like(offset)
+        #grad_mask = torch.zeros_like(mask)
+        #grad_weight = torch.zeros_like(weight)
+        #grad_bias = torch.zeros_like(bias)
+        grad_input,grad_offset,grad_mask,grad_weight,grad_bias=MDCONV_CUDA.modulated_deform_conv2d_backward_cuda(
+            input, weight, bias, offset, mask,grad_output,
             weight.shape[2], weight.shape[3],
             ctx.stride[0], ctx.stride[1],
             ctx.padding[0], ctx.padding[1],

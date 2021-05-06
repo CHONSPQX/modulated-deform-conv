@@ -61,7 +61,6 @@ __global__ void modulated_deform_conv2d_im2col_gpu_kernel(
     const int w_in = w_col * stride_w - pad_w;
 
     scalar_t *data_col_ptr = data_col + ((c_col * batch_size + b_col) * height_col + h_col) * width_col + w_col;
-    //const float* data_im_ptr = data_im + ((b_col * num_channels + c_im) * height + h_in) * width + w_in;
     const scalar_t *data_im_ptr = data_im + (b_col * num_channels + c_im) * height * width;
     const scalar_t *data_offset_ptr = data_offset + (b_col * deformable_group + deformable_group_index) * 2 * kernel_h * kernel_w * height_col * width_col;
     const scalar_t *data_mask_ptr = data_mask + (b_col * deformable_group + deformable_group_index) * kernel_h * kernel_w * height_col * width_col;
@@ -118,9 +117,9 @@ void modulated_deform_conv2d_im2col_cuda(
   }
 }
 
-int modulated_deform_conv2d_forward_cuda(
+at::Tensor modulated_deform_conv2d_forward_cuda(
     at::Tensor input, at::Tensor weight, at::Tensor bias,
-    at::Tensor offset, at::Tensor mask, at::Tensor *output,
+    at::Tensor offset, at::Tensor mask,
     const int kernel_h,const int kernel_w,const const int stride_h, const int stride_w,
     const int pad_h, const int pad_w, const int dilation_h,const int dilation_w,
     const int group, const int deformable_group,const int in_step,
@@ -130,7 +129,6 @@ int modulated_deform_conv2d_forward_cuda(
   AT_CHECK(bias.is_contiguous(), "bias tensor has to be contiguous");
   AT_CHECK(offset.is_contiguous(), "offset tensor has to be contiguous");
   AT_CHECK(mask.is_contiguous(), "mask tensor has to be contiguous");
-  AT_CHECK(output.is_contiguous(), "output tensor has to be contiguous");
 
   const int batch = input.size(0);
   const int channels = input.size(1);
@@ -156,31 +154,21 @@ int modulated_deform_conv2d_forward_cuda(
 
   // resize output
   const int step=GET_STEP(batch,in_step);
-  at::Tensor output_buffer=at::zeros({batch, channels_out, height_out, width_out},output.options());
-  output_buffer.zero_();
+  at::Tensor output=at::zeros({batch, channels_out, height_out, width_out},input.options());
   // resize temporary columns
   at::Tensor columns =at::zeros({channels * kernel_h * kernel_w,
   	  	  	  step * height_out * width_out},input.options());
-  //at::Tensor columns;
-  //TRY_ALLOCATE(columns,at::zeros({channels * kernel_h * kernel_w,
-//	  	  	  step * height_out * width_out},input.options()));
+
   input=input.view({batch/step,step,channels,height,width});
   offset=offset.view({batch/step,step,deformable_group * 2 *kernel_h*kernel_w,height_out,width_out});
   mask=mask.view({batch/step,step,deformable_group*kernel_h*kernel_w,height_out,width_out});
-#ifdef DEBUG
-  print_tensor_size("modulated_deform_conv2d_forward_cuda---output size",output);
-  print_tensor_size("modulated_deform_conv2d_forward_cuda---input size",input);
-  print_tensor_size("modulated_deform_conv2d_forward_cuda---offset size",offset);
-  print_tensor_size("modulated_deform_conv2d_forward_cuda---mask size",mask);
-#endif
+
   // divide into group
-  output_buffer = output_buffer.view({batch/step, group, channels_out / group,step,
+  output = output.view({batch/step, group, channels_out / group,step,
                         height_out, width_out});
   weight = weight.view({group, channels_out / group, channels_kernel,
                         kernel_h_, kernel_w_});
-#ifdef DEBUG
-  print_tensor_size("modulated_deform_conv2d_forward_cuda---weight size",weight);
-#endif
+
   for (int b = 0; b < batch/step; b++) {
     columns.fill_(0.0f);
     modulated_deform_conv2d_im2col_cuda(
@@ -188,29 +176,28 @@ int modulated_deform_conv2d_forward_cuda(
         width_out, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w,
         dilation_h, dilation_w, deformable_group, columns);
     columns = columns.view({group, channels * kernel_h * kernel_w / group, step * height_out * width_out});
-#ifdef DEBUG
-  print_tensor_size("modulated_deform_conv2d_forward_cuda---columns size",columns);
-#endif
     for (int g = 0; g < group; g++) {
-      output_buffer[b][g] = output_buffer[b][g].flatten(1)
-                        .addmm_(weight[g].flatten(1), columns[g]).view_as(output_buffer[b][g]);
+      output[b][g] = output[b][g].flatten(1)
+                        .addmm_(weight[g].flatten(1), columns[g]).view_as(output[b][g]);
     }
     columns = columns.view({columns.size(0) * columns.size(1), columns.size(2)});
   }
   weight = weight.view({weight.size(0) * weight.size(1), weight.size(2),
                         weight.size(3), weight.size(4)});
-  output_buffer = output_buffer.view({batch / step, channels_out, step, height_out, width_out});
-  output_buffer = output_buffer.transpose(1, 2).contiguous();
-  output_buffer = output_buffer.view({batch , channels_out, height_out, width_out});
+  output = output.view({batch / step, channels_out, step, height_out, width_out});
+  output = output.transpose(1, 2).contiguous();
+  output = output.view({batch , channels_out, height_out, width_out});
   if (with_bias) {
-    output_buffer += bias.view({1, bias.size(0), 1, 1});
+    output += bias.view({1, bias.size(0), 1, 1});
   }
-  input=input.view({batch,channels,height,width});
-  offset=offset.view({batch,deformable_group * 2 *kernel_h*kernel_w,height_out,width_out});
-  mask=mask.view({batch,deformable_group*kernel_h*kernel_w,height_out,width_out});
-  output.copy_(output_buffer);
-  return 0;
+   return output;
 }
+//   input=input.view({batch,channels,height,width});
+//   offset=offset.view({batch,deformable_group * 2 *kernel_h*kernel_w,height_out,width_out});
+//   mask=mask.view({batch,deformable_group*kernel_h*kernel_w,height_out,width_out});
+//   py::object id = py::module_::import("builtins").attr("id");
+//   py::object type = py::module_::import("builtins").attr("type");
+//   py::print(output,id(output));
 
 template <typename scalar_t>
 __global__ void modulated_deform_conv2d_gradient_gpu_kernel(
@@ -305,25 +292,7 @@ __global__ void modulated_deform_conv2d_gradient_gpu_kernel(
     	atomicAdd(grad_input + bpos*channels_input*height_input*width_input
     			+ cpos_in*height_input*width_input+h_high * width_input + w_high,(real_offset_h+1-h_high) * (real_offset_w+1-w_high)*dval);
     
-/*    if  (h_low * width_input + w_low==6)
-    printf("1 %0.15f %0.15f %0.15f %0.15f %0.15f \n", (h_low+1-real_offset_h) *(w_low+1-real_offset_w)*dval,(h_low+1-real_offset_h) *(w_low+1-real_offset_w),dval,real_offset_h,real_offset_w);
-    if  (h_low * width_input + w_high==6)
-    printf("1 %0.15f %0.15f %0.15f %0.15f %0.15f \n", (h_low+1-real_offset_h) *(real_offset_w+1-w_high)*dval,(h_low+1-real_offset_h) *(real_offset_w+1-w_high),dval,real_offset_h,real_offset_w);
-    if  (h_high * width_input + w_low==6)
-    printf("1 %0.15f %0.15f %0.15f %0.15f %0.15f \n", (real_offset_h+1-h_high) * (w_low+1-real_offset_w)*dval,(real_offset_h+1-h_high) * (w_low+1-real_offset_w),dval,real_offset_h,real_offset_w);
-    if  (h_high * width_input + w_high==6)
-    printf("1 %0.15f %0.15f %0.15f %0.15f %0.15f \n", (real_offset_h+1-h_high) * (real_offset_w+1-w_high)*dval,(real_offset_h+1-h_high) * (real_offset_w+1-w_high),dval,real_offset_h,real_offset_w);
-        
-    */    
-    
     if (real_offset_h > static_cast<scalar_t>(-1.)  && real_offset_h < height_input   && real_offset_w > static_cast<scalar_t>(-1.)    && real_offset_w< width_input){
-        /*if (hpos_col==0 && wpos_col==63){
-            printf("%f,%d\n",real_offset_h,h_low);
-            printf("%f,%d\n",real_offset_w,w_low);
-            printf("%f,%f,%f,%f,%f,%f,%f\n",v1,v2,v3,v4,dw,dh,dval);
-        }*/
-        //grad_offset[offset_h_ptr]+=(-1*(1-dw)*v1-1*dw*v2+(1-dw)*v3+dw*v4)*dval;
-        //atomicAdd(grad_offset + offset_h_ptr,(static_cast<scalar_t>(-1.)*(w_low+1-real_offset_w)*v1+static_cast<scalar_t>(-1.)*(real_offset_w+1-w_high)*v2+(w_low+1-real_offset_w)*v3+(real_offset_w+1-w_high)*v4)*dval);
         scalar_t w_tmp=static_cast<scalar_t>(0.);
         scalar_t v_tmp=static_cast<scalar_t>(0.);
         if(h_low>=0 && w_low>=0)  w_tmp+=-1*(w_low+1-real_offset_w)*v1;
@@ -331,13 +300,8 @@ __global__ void modulated_deform_conv2d_gradient_gpu_kernel(
         if(h_high< height_input && w_low>=0)  w_tmp+=(w_low+1-real_offset_w)*v3;
         if(h_low< height_input && w_high< width_input)  w_tmp+=(real_offset_w-w_low)*v4;
         v_tmp+=w_tmp*grad_col[index]*data_mask[mask_hw_ptr];
-        //printf("offset h%d %0.15f %0.15f %0.15f\n",offset_h_ptr,tmp,data_mask[mask_hw_ptr]*grad_col[index],ttmp);
-        //grad_offset[offset_h_ptr]=v_tmp;
         atomicAdd(grad_offset + offset_h_ptr,v_tmp);
-        //printf("offset %d %0.15f\n",offset_h_ptr,v_tmp);
-        //grad_offset[offset_w_ptr]+=(-1*(1-dh)*v1+(1-dh)*v2-1*dh*v3+dh*v4)*dval;
-        //atomicAdd(grad_offset + offset_w_ptr,(static_cast<scalar_t>(-1.)*(h_low+1-real_offset_h)*v1+((h_low+1-real_offset_h))*v2+static_cast<scalar_t>(-1.)*(real_offset_h+1-h_high)*v3+(real_offset_h+1-h_high)*v4)*dval);
-        //grad_offset[offset_w_ptr]=(static_cast<scalar_t>(-1.)*(h_low+1-real_offset_h)*v1+((h_low+1-real_offset_h))*v2+static_cast<scalar_t>(-1.)*(real_offset_h+1-h_high)*v3+(real_offset_h+1-h_high)*v4)*dval;
+        
         w_tmp=static_cast<scalar_t>(0.);
         v_tmp=static_cast<scalar_t>(0.);
         if(h_low>=0 && w_low>=0)  w_tmp+=-1*(h_low+1-real_offset_h)*v1;
@@ -346,13 +310,9 @@ __global__ void modulated_deform_conv2d_gradient_gpu_kernel(
         if(h_low< height_input && w_high< width_input)  w_tmp+=(real_offset_h-h_low)*v4;
         
         v_tmp+=w_tmp*grad_col[index]*data_mask[mask_hw_ptr];
-        //grad_offset[offset_w_ptr]=v_tmp;
         atomicAdd(grad_offset + offset_w_ptr,v_tmp);
-        //printf("offset %d %0.15f\n",offset_w_ptr,v_tmp);
     }
     atomicAdd(grad_mask + mask_hw_ptr,grad_col[index]*val);
-    //printf("mask %d %0.15f\n",mask_hw_ptr,grad_col[index]*val);
-    //grad_mask[mask_hw_ptr]=val*grad_col[index];
     columns[index]=col;
   }
 }
@@ -370,16 +330,6 @@ void modulated_deform_conv2d_gradient_cuda(
 {
   const int num_kernels =channels*height_col * width_col * kernel_h * kernel_w * step;
   const int channel_per_deformable_group =2 * kernel_h * kernel_w ;
-#ifdef DEBUG
-  print_tensor_size("modulated_deform_conv2d_gradient_cuda---grad_col size",grad_col,2);
-  print_tensor_size("modulated_deform_conv2d_gradient_cuda---data_input size",data_input,2);
-  print_tensor_size("modulated_deform_conv2d_gradient_cuda---data_offset size",data_offset,2);
-  print_tensor_size("modulated_deform_conv2d_gradient_cuda---data_mask size",data_mask,2);
-  print_tensor_size("modulated_deform_conv2d_gradient_cuda---columns size",columns,2);
-  print_tensor_size("modulated_deform_conv2d_gradient_cuda---grad_input size",grad_input,2);
-  print_tensor_size("modulated_deform_conv2d_gradient_cuda---grad_offset size",grad_offset,2);
-  print_tensor_size("modulated_deform_conv2d_gradient_cuda---grad_mask size",grad_mask,2);
-#endif
 
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(
         grad_col.scalar_type(), "modulated_deform_conv2d_gradient_gpu_kernel", ([&] {
@@ -408,10 +358,9 @@ void modulated_deform_conv2d_gradient_cuda(
   }
 }
 
-int modulated_deform_conv2d_backward_cuda(
+py::tuple modulated_deform_conv2d_backward_cuda(
     at::Tensor input, at::Tensor weight, at::Tensor bias,at::Tensor offset, at::Tensor mask,
-    at::Tensor grad_input, at::Tensor grad_weight, at::Tensor grad_bias,
-    at::Tensor grad_offset, at::Tensor grad_mask, at::Tensor grad_output,
+    at::Tensor grad_output,
     const int kernel_h,const int kernel_w,const int stride_h,const int stride_w,
     const int pad_h,const int pad_w,const int dilation_h,const int dilation_w,
     const int group,const int deformable_group, const int in_step,const bool with_bias) {
@@ -420,12 +369,6 @@ int modulated_deform_conv2d_backward_cuda(
   AT_CHECK(bias.is_contiguous(), "bias tensor has to be contiguous");
   AT_CHECK(offset.is_contiguous(), "offset tensor has to be contiguous");
   AT_CHECK(mask.is_contiguous(), "mask tensor has to be contiguous");
-  AT_CHECK(grad_input.is_contiguous(), "grad_input tensor has to be contiguous");
-  AT_CHECK(grad_weight.is_contiguous(), "grad_weight tensor has to be contiguous");
-  AT_CHECK(grad_bias.is_contiguous(), "grad_bias tensor has to be contiguous");
-  AT_CHECK(grad_offset.is_contiguous(), "grad_offset tensor has to be contiguous");
-  AT_CHECK(grad_mask.is_contiguous(), "grad_mask tensor has to be contiguous");
-  AT_CHECK(grad_output.is_contiguous(), "grad_output tensor has to be contiguous");
 
   const int batch = input.size(0);
   const int channels = input.size(1);
@@ -458,19 +401,19 @@ int modulated_deform_conv2d_backward_cuda(
   grad_output =grad_output.view({grad_output.size(0), group, grad_output.size(1) / group,
                         grad_output.size(2), grad_output.size(3),grad_output.size(4)});
   input=input.view({batch/step,step,channels,height,width});
-  grad_input = grad_input.view({batch/step,step, channels, height, width});
+  at::Tensor grad_input = at::zeros({batch/step,step, channels, height, width},input.options());
   offset=offset.view({batch/step,step,deformable_group * 2 * kernel_h * kernel_w,height_out,width_out});
-  grad_offset=grad_offset.view({batch/step,step,deformable_group * 2 * kernel_h * kernel_w,height_out,width_out});
+  at::Tensor grad_offset=at::zeros({batch/step,step,deformable_group * 2 * kernel_h * kernel_w,height_out,width_out},offset.options());
   mask=mask.view({batch/step,step,deformable_group * kernel_h * kernel_w,height_out,width_out});
-  grad_mask=grad_mask.view({batch/step,step,deformable_group * kernel_h * kernel_w,height_out,width_out});
+  at::Tensor grad_mask=at::zeros({batch/step,step,deformable_group * kernel_h * kernel_w,height_out,width_out},mask.options());
+  
+  at::Tensor grad_weight=at::zeros_like(weight,weight.options());
+  at::Tensor grad_bias=at::zeros_like(bias,bias.options());
   for (int b = 0; b < batch/step; b++) {
     // divide int group
 	grad_columns = grad_columns.view({group, grad_columns.size(0) / group, grad_columns.size(1)});
     weight = weight.view({group, weight.size(0) / group, weight.size(1),weight.size(2), weight.size(3)});
-#ifdef DEBUG
-  print_tensor_size("modulated_deform_conv2d_backward_cuda_v2---grad_columns size",grad_columns);
-  print_tensor_size("modulated_deform_conv2d_backward_cuda_v2---weight size",weight);
-#endif
+
     for (int g = 0; g < group; g++) {
     	grad_columns[g].addmm_(weight[g].flatten(1).transpose(0, 1),grad_output[b][g].flatten(1), 0.0f, 1.0f);
     }
@@ -485,7 +428,6 @@ int modulated_deform_conv2d_backward_cuda(
     		step,deformable_group,
     		grad_input[b],grad_offset[b],grad_mask[b]);
     columns = columns.view({group, columns.size(0) / group, columns.size(1)});
-   // std::cout<<"columns \n"<<columns<<std::endl;
     grad_weight = grad_weight.view({group, grad_weight.size(0) / group,
                                     grad_weight.size(1), grad_weight.size(2),
                                     grad_weight.size(3)});
@@ -508,19 +450,18 @@ int modulated_deform_conv2d_backward_cuda(
     if (with_bias)
       grad_bias = grad_bias.view({grad_bias.size(0) * grad_bias.size(1)});
   }
-  // batch/step group channels/group step h w
-  grad_output = grad_output.view({grad_output.size(0) ,grad_output.size(1)*grad_output.size(2),
-	  	  	  	  	  	  	  	  grad_output.size(3),grad_output.size(4),grad_output.size(5)});
-  //grad_output=grad_output.view({batch/step,channels_kernel,step,height_out,width_out});
-  grad_output.transpose_(1, 2);
-  grad_output =grad_output.view({batch,channels_out,height_out,width_out});
-  input=input.view({batch,channels,height,width});
   grad_input = grad_input.view({batch, channels, height, width});
-  offset=offset.view({batch,deformable_group * 2 * kernel_h * kernel_w,height_out,width_out});
   grad_offset=grad_offset.view({batch,deformable_group * 2 * kernel_h * kernel_w,height_out,width_out});
-  mask=mask.view({batch,deformable_group * kernel_h * kernel_w,height_out,width_out});
   grad_mask=grad_mask.view({batch,deformable_group * kernel_h * kernel_w,height_out,width_out});
-  return 0;
+  py::tuple out=py::make_tuple(grad_input, grad_offset, grad_mask, grad_weight, grad_bias);
+  return out;
+}
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+  m.def("modulated_deform_conv2d_forward_cuda", &modulated_deform_conv2d_forward_cuda,
+        "modulated_deform_conv2d_forward_cuda");
+  m.def("modulated_deform_conv2d_backward_cuda", &modulated_deform_conv2d_backward_cuda,
+        "modulated_deform_conv2d_backward_cuda");
 }
 
 
